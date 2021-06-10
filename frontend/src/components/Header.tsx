@@ -1,6 +1,5 @@
 import React, { useContext } from 'react'
 import styled from 'styled-components/macro'
-import { toChecksumAddress } from 'web3-utils'
 import { GeyserContext } from '../context/GeyserContext'
 import { VaultContext } from '../context/VaultContext'
 import { displayAddr } from '../utils/formatDisplayAddress'
@@ -9,7 +8,7 @@ import { HeaderWalletButton } from './HeaderWalletButton'
 interface Props {}
 
 export const Header: React.FC<Props> = () => {
-  const { geysers, selectGeyserById, geyserAddressToName } = useContext(GeyserContext)
+  const { geysers, selectGeyserById, formatGeyserAddress } = useContext(GeyserContext)
   const { vaults, selectVaultById } = useContext(VaultContext)
 
   const handleSelectGeyser = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -30,7 +29,7 @@ export const Header: React.FC<Props> = () => {
             {geysers.map((geyser) => (
               <option key={geyser.id} value={geyser.id}>
                 {' '}
-                {geyserAddressToName.get(toChecksumAddress(geyser.id))}{' '}
+                {formatGeyserAddress(geyser.id)}{' '}
               </option>
             ))}
           </Select>
@@ -58,14 +57,9 @@ export const Header: React.FC<Props> = () => {
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 
-const Select: React.FC<SelectProps> = (props) => {
-  const { children } = props
-  return (
-    <DropDownSelect {...props} className="rounded-2xl">
-      {children}
-    </DropDownSelect>
-  )
-}
+const Select: React.FC<SelectProps> = (props) => (
+  <DropDownSelect {...props} className="rounded-2xl" />
+)
 
 const Container = styled.div`
   height: fit-content;

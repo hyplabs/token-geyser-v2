@@ -1,4 +1,4 @@
-import { BigNumber, Signer } from 'ethers'
+import { BigNumber, BigNumberish, Signer } from 'ethers'
 import { toChecksumAddress } from 'web3-utils'
 import { formatUnits } from 'ethers/lib/utils'
 import { getCurrentUnlockedRewards, getCurrentVaultReward, getFutureUnlockedRewards } from '../sdk/stats'
@@ -90,28 +90,28 @@ const getPoolDrip = async (geyser: Geyser, end: number, signer: Signer) => {
  * from the stakes in `lock` and `additionalStakes`, assuming that the max reward multiplier will be
  * achieved after `duration` seconds
  */
-const getUserDrip = async (
+export const getUserDrip = async (
   geyser: Geyser,
   lock: Lock,
-  additionalStakes: BigNumber,
+  additionalStakes: BigNumberish,
   duration: number,
   signer: Signer,
 ) => {
   const now = nowInSeconds()
   const afterDuration = now + duration
   const poolDrip = await getPoolDrip(geyser, afterDuration, signer)
-  const stakeUnitsFromAdditionalStake = additionalStakes.mul(duration)
+  const stakeUnitsFromAdditionalStake = BigNumber.from(additionalStakes).mul(duration)
   const totalStakeUnitsAfterDuration = getTotalStakeUnits(geyser, afterDuration).add(stakeUnitsFromAdditionalStake)
   const lockStakeUnitsAfterDuration = getLockStakeUnits(lock, afterDuration).add(stakeUnitsFromAdditionalStake)
   if (totalStakeUnitsAfterDuration.isZero()) return BigNumber.from('0')
   return poolDrip.mul(lockStakeUnitsAfterDuration).div(totalStakeUnitsAfterDuration)
 }
 
-const getStakeDrip = async (geyser: Geyser, stake: BigNumber, duration: number, signer: Signer) => {
+export const getStakeDrip = async (geyser: Geyser, stake: BigNumberish, duration: number, signer: Signer) => {
   const now = nowInSeconds()
   const afterDuration = now + duration
   const poolDrip = await getPoolDrip(geyser, afterDuration, signer)
-  const stakeUnitsFromStake = stake.mul(duration)
+  const stakeUnitsFromStake = BigNumber.from(stake).mul(duration)
   const totalStakeUnitsAfterDuration = getTotalStakeUnits(geyser, afterDuration).add(stakeUnitsFromStake)
   if (totalStakeUnitsAfterDuration.isZero()) return BigNumber.from('0')
   return poolDrip.mul(stakeUnitsFromStake).div(totalStakeUnitsAfterDuration)
@@ -128,11 +128,12 @@ const calculateAPY = (inflow: number, outflow: number, periods: number) => (1 + 
  *
  * calcPeriod = max(min(geyserDuration, scalingTime), day)
  */
-const getUserAPY = async (
+export const getUserAPY = async (
   geyser: Geyser,
   lock: Lock,
   stakingTokenInfo: StakingTokenInfo,
   rewardTokenInfo: TokenInfo,
+  additionalStakes: BigNumberish,
   signer: Signer,
 ) => {
   const { scalingTime } = geyser
@@ -142,7 +143,7 @@ const getUserAPY = async (
   const rewardTokenPrice = await getCurrentPrice(rewardTokenSymbol)
   const geyserDuration = getGeyserDuration(geyser)
   const calcPeriod = Math.max(Math.min(geyserDuration, parseInt(scalingTime, 10)), DAY_IN_SEC)
-  const userDripAfterPeriod = await getUserDrip(geyser, lock, BigNumber.from('0'), parseInt(scalingTime, 10), signer)
+  const userDripAfterPeriod = await getUserDrip(geyser, lock, additionalStakes, parseInt(scalingTime, 10), signer)
 
   const inflow = parseFloat(formatUnits(stakedAmount, stakingTokenDecimals)) * stakingTokenPrice
   const outflow = parseFloat(formatUnits(userDripAfterPeriod, rewardTokenDecimals)) * rewardTokenPrice
@@ -201,6 +202,8 @@ const getCurrentMultiplier = async (geyser: Geyser, vault: Vault, lock: Lock, si
   if (totalStakeUnits.isZero()) return minMultiplier
 
   const currentUnlockedRewards = await getCurrentUnlockedRewards(geyserAddress, signer)
+  if (currentUnlockedRewards.isZero()) return minMultiplier
+
   const currentRewards = await getCurrentVaultReward(vaultAddress, geyserAddress, signer)
   const maxRewards = currentUnlockedRewards.mul(lockStakeUnits).div(totalStakeUnits)
 
@@ -231,7 +234,7 @@ export const getUserStats = async (
   const formattedCurrentRewards = parseFloat(formatUnits(currentRewards, rewardTokenDecimals))
   const apy = BigNumber.from(amount).isZero()
     ? await getPoolAPY(geyser, stakingTokenInfo, rewardTokenInfo, signer)
-    : await getUserAPY(geyser, lock, stakingTokenInfo, rewardTokenInfo, signer)
+    : await getUserAPY(geyser, lock, stakingTokenInfo, rewardTokenInfo, 0, signer)
   return {
     apy,
     currentMultiplier: await getCurrentMultiplier(geyser, vault, lock, signer),

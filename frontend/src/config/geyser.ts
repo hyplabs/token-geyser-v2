@@ -1,10 +1,21 @@
 import { StakingToken } from '../constants'
 import { GeyserConfig } from '../types'
 
+/**
+ *
+ * `address` should be the actual address to which the geyser contract was deployed
+ *
+ */
 const mockGeyserConfigs: GeyserConfig[] = [
   {
     name: 'Trinity V1 (Balancer BTC-ETH-AMPL)',
-    address: '0x0dcd1bf9a1b36ce34237eeafef220932846bcd82',
+    address: '0x0000000000000000000000000000000000000000',
+    stakingToken: StakingToken.MOCK,
+    platformTokenConfigs: [],
+  },
+  {
+    name: 'Beehive V3 (Uniswap ETH-AMPL)',
+    address: '0x0000000000000000000000000000000000000000',
     stakingToken: StakingToken.MOCK,
     platformTokenConfigs: [],
   },

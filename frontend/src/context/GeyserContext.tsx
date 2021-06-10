@@ -18,7 +18,7 @@ export const GeyserContext = createContext<{
   stakingTokenInfo: StakingTokenInfo
   rewardTokenInfo: TokenInfo
   platformTokenInfos: TokenInfo[]
-  geyserAddressToName: Map<string, string>
+  formatGeyserAddress: (id: string) => string
   selectedGeyserConfig: GeyserConfig | null
 }>({
   geysers: [],
@@ -28,7 +28,7 @@ export const GeyserContext = createContext<{
   stakingTokenInfo: defaultStakingTokenInfo(),
   rewardTokenInfo: defaultTokenInfo(),
   platformTokenInfos: [],
-  geyserAddressToName: new Map<string, string>(),
+  formatGeyserAddress: () => '',
   selectedGeyserConfig: null,
 })
 
@@ -49,6 +49,7 @@ export const GeyserContextProvider: React.FC = ({ children }) => {
 
   const selectGeyser = (geyser: Geyser) => setSelectedGeyser(geyser)
   const selectGeyserById = (id: string) => setSelectedGeyser(geysers.find(geyser => toChecksumAddress(geyser.id) === toChecksumAddress(id)) || selectedGeyser)
+  const formatGeyserAddress = (id: string) => geyserAddressToName.get(toChecksumAddress(id)) || ''
 
   useEffect(() => {
     const ids = geyserConfigs.map(geyser => geyser.address.toLowerCase())
@@ -107,7 +108,7 @@ export const GeyserContextProvider: React.FC = ({ children }) => {
         stakingTokenInfo,
         rewardTokenInfo,
         platformTokenInfos,
-        geyserAddressToName,
+        formatGeyserAddress,
         selectedGeyserConfig,
       }}
     >
