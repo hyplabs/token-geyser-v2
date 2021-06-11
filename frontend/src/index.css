@@ -24,3 +24,11 @@ code {
 #root {
   height: 100%;
 }
+
+@layer utilities {
+  @variants responsive {
+    .w-650 {
+      width: 650px;
+    }
+  }
+}

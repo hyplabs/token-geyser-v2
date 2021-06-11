@@ -66,3 +66,29 @@ export const LogoDiv = styled.div`
   padding-left: 20px;
   padding-right: 22px;
 `
+
+export const StatsTitle = styled.p`
+  font-weight: bold;
+  font-size: 1rem;
+  color: ${NamedColors.RADICAL_RED};
+  white-space: nowrap;
+`
+
+export const StatsEntryBody = styled.p`
+  font-weight: bold;
+`
+
+export const StatsEntryCurrency = styled.span`
+  font-size: 0.75rem;
+`
+
+export const VerticalLine = styled.div`
+  left: 50%;
+  top: 10%;
+  bottom: 0;
+  width: 1px;
+  background: ${NamedColors.SILVER};
+  z-index: 1;
+  height: 80%;
+  position: absolute;
+`

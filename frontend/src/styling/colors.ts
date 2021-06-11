@@ -10,4 +10,5 @@ export enum NamedColors {
   RED_ORANGE = '#FF4136',
   SCHOOL_BUS_YELLOW = '#FFDC00',
   WHITE = '#ffffff',
+  SILVER = '#C0C0C0',
 }
