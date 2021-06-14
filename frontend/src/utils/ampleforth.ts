@@ -1,8 +1,8 @@
-import { Contract, ethers, Signer } from 'ethers'
+import { Contract } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import { toChecksumAddress } from 'web3-utils'
 import { AMPL_LAUNCH_DATE, DAY_IN_MS, INITIAL_SUPPLY } from '../constants'
-import { RewardSchedule, SupplyInfo } from '../types'
+import { RewardSchedule, SignerOrProvider, SupplyInfo } from '../types'
 import { UFRAGMENTS_POLICY_ABI } from './abis/UFragmentsPolicy'
 import { loadHistoricalLogs } from './eth'
 import * as ls from './cache'
@@ -11,10 +11,10 @@ export const getTotalRewardShares = async (
   rewardSchedules: RewardSchedule[],
   policyAddress: string,
   epoch: number,
-  decimals = 9,
-  signer?: Signer,
+  decimals: number,
+  signerOrProvider: SignerOrProvider,
 ) => {
-  const supplyHistory = await getSupplyHistory(policyAddress, epoch, decimals, signer)
+  const supplyHistory = await getSupplyHistory(policyAddress, epoch, decimals, signerOrProvider)
   const getShares = (schedule: RewardSchedule) =>
     parseFloat(formatUnits(schedule.rewardAmount, decimals)) / getSupplyOn(parseInt(schedule.start, 10), supplyHistory)
   return rewardSchedules.reduce((acc, schedule) => acc + getShares(schedule), 0)
@@ -30,10 +30,15 @@ export const getSupplyOn = (timestamp: number, supplyHistory: SupplyInfo[]) => {
   return supplyHistory[Math.max(index - 1, 0)].supply
 }
 
-export const getSupplyHistory = async (policyAddress: string, epoch: number, decimals: number, signer?: Signer) =>
+export const getSupplyHistory = async (
+  policyAddress: string,
+  epoch: number,
+  decimals: number,
+  signerOrProvider: SignerOrProvider,
+) =>
   ls.computeAndCache<SupplyInfo[]>(
     async () => {
-      const policy = new Contract(policyAddress, UFRAGMENTS_POLICY_ABI, signer || ethers.getDefaultProvider())
+      const policy = new Contract(policyAddress, UFRAGMENTS_POLICY_ABI, signerOrProvider)
       const eventLogs = await loadHistoricalLogs(policy, 'LogRebase')
       const historyFromLogs: SupplyInfo[] = eventLogs
         .filter((log) => log.args)

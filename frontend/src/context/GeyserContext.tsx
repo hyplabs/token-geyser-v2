@@ -34,7 +34,7 @@ export const GeyserContext = createContext<{
 })
 
 export const GeyserContextProvider: React.FC = ({ children }) => {
-  const { signer } = useContext(Web3Context)
+  const { signer, defaultProvider } = useContext(Web3Context)
   // Polling to fetch fresh geyser stats
   const [getGeysers, { loading: geyserLoading, data: geyserData }] = useLazyQuery(GET_GEYSERS, {
     pollInterval: POLL_INTERVAL,
@@ -69,17 +69,17 @@ export const GeyserContextProvider: React.FC = ({ children }) => {
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      if (signer && selectedGeyser) {
+      if (selectedGeyser) {
         try {
           const geyserAddress = toChecksumAddress(selectedGeyser.id)
           const geyserConfig = geyserConfigs.find(config => toChecksumAddress(config.address) === geyserAddress)
           if (!geyserConfig) {
             throw new Error(`Geyser config not found for geyser at ${geyserAddress}`)
           }
-          const newStakingTokenInfo = await getStakingTokenInfo(selectedGeyser.stakingToken, geyserConfig.stakingToken, signer)
-          const newRewardTokenInfo = await getRewardTokenInfo(selectedGeyser.rewardToken, geyserConfig.rewardToken, signer)
+          const newStakingTokenInfo = await getStakingTokenInfo(selectedGeyser.stakingToken, geyserConfig.stakingToken, signer || defaultProvider)
+          const newRewardTokenInfo = await getRewardTokenInfo(selectedGeyser.rewardToken, geyserConfig.rewardToken, signer || defaultProvider)
           const { platformTokenConfigs } = geyserConfig
-          const newPlatformTokenInfos = await Promise.all(platformTokenConfigs.map(({ address }) => getTokenInfo(address, signer)))
+          const newPlatformTokenInfos = await Promise.all(platformTokenConfigs.map(({ address }) => getTokenInfo(address, signer || defaultProvider)))
           if (mounted) {
             setStakingTokenInfo(newStakingTokenInfo)
             setRewardTokenInfo(newRewardTokenInfo)
@@ -94,7 +94,7 @@ export const GeyserContextProvider: React.FC = ({ children }) => {
     return () => {
       mounted = false
     }
-  }, [signer, selectedGeyser])
+  }, [selectedGeyser])
 
   useEffect(() => {
     if (geysers.length > 0) {

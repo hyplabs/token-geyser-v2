@@ -1,4 +1,4 @@
-import { Contract } from 'ethers'
+import { providers, Signer } from 'ethers'
 import { RewardToken, StakingToken } from './constants'
 
 type ClaimedReward = {
@@ -114,3 +114,5 @@ export type SupplyInfo = {
   supply: number
   epoch: number
 }
+
+export type SignerOrProvider = Signer | providers.Provider

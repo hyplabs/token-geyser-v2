@@ -30,7 +30,7 @@ export const StatsContextProvider: React.FC = ({ children }) => {
   const [geyserStats, setGeyserStats] = useState<GeyserStats>(defaultGeyserStats())
   const [vaultStats, setVaultStats] = useState<VaultStats>(defaultVaultStats())
 
-  const { signer } = useContext(Web3Context)
+  const { signer, defaultProvider } = useContext(Web3Context)
   const { selectedGeyser, rewardTokenInfo, stakingTokenInfo, platformTokenInfos } = useContext(GeyserContext)
   const { selectedVault, currentLock } = useContext(VaultContext)
 
@@ -67,10 +67,10 @@ export const StatsContextProvider: React.FC = ({ children }) => {
     let mounted = true
     ;(async () => {
       try {
-        if (signer && selectedGeyser) {
+        if (selectedGeyser && stakingTokenInfo.address && rewardTokenInfo.address) {
           const newGeyserStats = await getGeyserStats(selectedGeyser, stakingTokenInfo, rewardTokenInfo)
-          const newUserStats = await getUserStats(selectedGeyser, selectedVault, currentLock, stakingTokenInfo, rewardTokenInfo, signer)
-          const newVaultStats = await getVaultStats(stakingTokenInfo, platformTokenInfos, rewardTokenInfo, selectedVault, currentLock, signer)
+          const newUserStats = await getUserStats(selectedGeyser, selectedVault, currentLock, stakingTokenInfo, rewardTokenInfo, signer || defaultProvider)
+          const newVaultStats = await getVaultStats(stakingTokenInfo, platformTokenInfos, rewardTokenInfo, selectedVault, currentLock, signer || defaultProvider)
           if (mounted) {
             setGeyserStats(newGeyserStats)
             setUserStats(newUserStats)
@@ -82,7 +82,7 @@ export const StatsContextProvider: React.FC = ({ children }) => {
       }
     })()
     return () => { mounted = false }
-  }, [signer, selectedGeyser, selectedVault, currentLock])
+  }, [selectedGeyser, selectedVault, currentLock, stakingTokenInfo.address, rewardTokenInfo.address])
 
   return (
     <StatsContext.Provider

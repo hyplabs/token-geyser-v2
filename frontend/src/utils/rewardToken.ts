@@ -1,7 +1,7 @@
-import { Contract, Signer } from 'ethers'
+import { Contract } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import { RewardToken } from '../constants'
-import { RewardSchedule, RewardTokenInfo } from '../types'
+import { RewardSchedule, RewardTokenInfo, SignerOrProvider } from '../types'
 import { UFRAGMENTS_ABI } from './abis/UFragments'
 import { UFRAGMENTS_POLICY_ABI } from './abis/UFragmentsPolicy'
 import { getTotalRewardShares } from './ampleforth'
@@ -12,19 +12,23 @@ export const defaultRewardTokenInfo = (): RewardTokenInfo => ({
   getTotalRewards: async () => 0,
 })
 
-export const getRewardTokenInfo = async (tokenAddress: string, token: RewardToken, signer: Signer) => {
+export const getRewardTokenInfo = async (
+  tokenAddress: string,
+  token: RewardToken,
+  signerOrProvider: SignerOrProvider,
+) => {
   switch (token) {
     case RewardToken.MOCK:
-      return getMockToken(tokenAddress, signer)
+      return getMockToken(tokenAddress, signerOrProvider)
     case RewardToken.AMPL:
-      return getAMPLToken(tokenAddress, signer)
+      return getAMPLToken(tokenAddress, signerOrProvider)
     default:
       throw new Error(`Handler for ${token} not found`)
   }
 }
 
-const getMockToken = async (tokenAddress: string, signer: Signer): Promise<RewardTokenInfo> => {
-  const tokenInfo = await getTokenInfo(tokenAddress, signer)
+const getMockToken = async (tokenAddress: string, signerOrProvider: SignerOrProvider): Promise<RewardTokenInfo> => {
+  const tokenInfo = await getTokenInfo(tokenAddress, signerOrProvider)
   const getTotalRewards = async (rewardSchedules: RewardSchedule[]) =>
     rewardSchedules.reduce(
       (acc, schedule) => acc + parseFloat(formatUnits(schedule.rewardAmount, tokenInfo.decimals)),
@@ -36,11 +40,11 @@ const getMockToken = async (tokenAddress: string, signer: Signer): Promise<Rewar
   }
 }
 
-const getAMPLToken = async (tokenAddress: string, signer: Signer): Promise<RewardTokenInfo> => {
-  const contract = new Contract(tokenAddress, UFRAGMENTS_ABI, signer)
-  const tokenInfo = await getTokenInfo(tokenAddress, signer)
+const getAMPLToken = async (tokenAddress: string, signerOrProvider: SignerOrProvider): Promise<RewardTokenInfo> => {
+  const contract = new Contract(tokenAddress, UFRAGMENTS_ABI, signerOrProvider)
+  const tokenInfo = await getTokenInfo(tokenAddress, signerOrProvider)
   const policyAddress: string = await contract.monetaryPolicy()
-  const policy = new Contract(policyAddress, UFRAGMENTS_POLICY_ABI, signer)
+  const policy = new Contract(policyAddress, UFRAGMENTS_POLICY_ABI, signerOrProvider)
 
   const totalSupply = await contract.totalSupply()
   const epoch = parseInt(await policy.epoch(), 10)
@@ -51,7 +55,7 @@ const getAMPLToken = async (tokenAddress: string, signer: Signer): Promise<Rewar
       policyAddress,
       epoch,
       tokenInfo.decimals,
-      signer,
+      signerOrProvider,
     )
     return totalRewardShares * totalSupply
   }
