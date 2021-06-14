@@ -32,3 +32,18 @@ export enum StakingToken {
   BALANCER_V1,
   BALANCER_SMART_POOL_V1,
 }
+
+// Reward tokens
+export enum RewardToken {
+  // for testing
+  MOCK,
+
+  // for mainnet
+  AMPL,
+}
+
+// ufragments deploy block number
+export const UFRG_INIT_BLOCK = 7947823
+
+export const AMPL_LAUNCH_DATE = 1561687200
+export const INITIAL_SUPPLY = 50000000

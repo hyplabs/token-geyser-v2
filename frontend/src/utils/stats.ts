@@ -2,7 +2,17 @@ import { BigNumber, BigNumberish, Signer } from 'ethers'
 import { toChecksumAddress } from 'web3-utils'
 import { formatUnits } from 'ethers/lib/utils'
 import { getCurrentUnlockedRewards, getCurrentVaultReward, getFutureUnlockedRewards } from '../sdk/stats'
-import { Geyser, GeyserStats, Lock, StakingTokenInfo, TokenInfo, UserStats, Vault, VaultStats } from '../types'
+import {
+  Geyser,
+  GeyserStats,
+  Lock,
+  RewardTokenInfo,
+  StakingTokenInfo,
+  TokenInfo,
+  UserStats,
+  Vault,
+  VaultStats,
+} from '../types'
 import { ERC20Balance } from '../sdk'
 import { DAY_IN_SEC, YEAR_IN_SEC } from '../constants'
 import { getCurrentPrice } from './price'
@@ -18,7 +28,7 @@ export const defaultUserStats = (): UserStats => ({
 export const defaultGeyserStats = (): GeyserStats => ({
   duration: 0,
   totalDeposit: 0,
-  totalRewardsClaimed: 0,
+  totalRewards: 0,
 })
 
 export const defaultVaultStats = (): VaultStats => ({
@@ -48,18 +58,12 @@ const getGeyserTotalDeposit = (geyser: Geyser, stakingTokenInfo: StakingTokenInf
 export const getGeyserStats = async (
   geyser: Geyser,
   stakingTokenInfo: StakingTokenInfo,
-  rewardTokenInfo: TokenInfo,
-): Promise<GeyserStats> => {
-  const { totalRewardsClaimed } = geyser
-  const { decimals } = rewardTokenInfo
-  const formattedTotalRewardsClaimed = parseFloat(formatUnits(totalRewardsClaimed, decimals))
-
-  return {
-    duration: getGeyserDuration(geyser),
-    totalDeposit: getGeyserTotalDeposit(geyser, stakingTokenInfo),
-    totalRewardsClaimed: formattedTotalRewardsClaimed,
-  }
-}
+  rewardTokenInfo: RewardTokenInfo,
+): Promise<GeyserStats> => ({
+  duration: getGeyserDuration(geyser),
+  totalDeposit: getGeyserTotalDeposit(geyser, stakingTokenInfo),
+  totalRewards: await rewardTokenInfo.getTotalRewards(geyser.rewardSchedules),
+})
 
 const getTotalStakeUnits = (geyser: Geyser, timestamp: number) => {
   const { totalStake, totalStakeUnits: cachedTotalStakeUnits, lastUpdate } = geyser
@@ -103,8 +107,11 @@ export const getUserDrip = async (
   const stakeUnitsFromAdditionalStake = BigNumber.from(additionalStakes).mul(duration)
   const totalStakeUnitsAfterDuration = getTotalStakeUnits(geyser, afterDuration).add(stakeUnitsFromAdditionalStake)
   const lockStakeUnitsAfterDuration = getLockStakeUnits(lock, afterDuration).add(stakeUnitsFromAdditionalStake)
-  if (totalStakeUnitsAfterDuration.isZero()) return BigNumber.from('0')
-  return poolDrip.mul(lockStakeUnitsAfterDuration).div(totalStakeUnitsAfterDuration)
+  if (totalStakeUnitsAfterDuration.isZero()) return 0
+  return (
+    parseInt(poolDrip.mul(lockStakeUnitsAfterDuration).toString(), 10) /
+    parseInt(totalStakeUnitsAfterDuration.toString(), 10)
+  )
 }
 
 export const getStakeDrip = async (geyser: Geyser, stake: BigNumberish, duration: number, signer: Signer) => {
@@ -113,8 +120,10 @@ export const getStakeDrip = async (geyser: Geyser, stake: BigNumberish, duration
   const poolDrip = await getPoolDrip(geyser, afterDuration, signer)
   const stakeUnitsFromStake = BigNumber.from(stake).mul(duration)
   const totalStakeUnitsAfterDuration = getTotalStakeUnits(geyser, afterDuration).add(stakeUnitsFromStake)
-  if (totalStakeUnitsAfterDuration.isZero()) return BigNumber.from('0')
-  return poolDrip.mul(stakeUnitsFromStake).div(totalStakeUnitsAfterDuration)
+  if (totalStakeUnitsAfterDuration.isZero()) return 0
+  return (
+    parseInt(poolDrip.mul(stakeUnitsFromStake).toString(), 10) / parseInt(totalStakeUnitsAfterDuration.toString(), 10)
+  )
 }
 
 const calculateAPY = (inflow: number, outflow: number, periods: number) => (1 + outflow / inflow) ** periods - 1
@@ -172,7 +181,7 @@ const getPoolAPY = async (
   const geyserDuration = getGeyserDuration(geyser)
   const calcPeriod = Math.max(Math.min(geyserDuration, parseInt(scalingTime, 10)), DAY_IN_SEC)
   const stakeDripAfterPeriod = await getStakeDrip(geyser, stake, parseInt(scalingTime, 10), signer)
-  if (stakeDripAfterPeriod.isZero()) return 0
+  if (stakeDripAfterPeriod === 0) return 0
 
   const outflow = parseFloat(formatUnits(stakeDripAfterPeriod, rewardTokenDecimals)) * rewardTokenPrice
   const periods = YEAR_IN_SEC / calcPeriod
@@ -199,15 +208,15 @@ const getCurrentMultiplier = async (geyser: Geyser, vault: Vault, lock: Lock, si
   const maxMultiplier = parseInt(scalingCeiling, 10) / parseInt(scalingFloor, 10)
   const totalStakeUnits = getTotalStakeUnits(geyser, now)
   const lockStakeUnits = getLockStakeUnits(lock, now)
-  if (totalStakeUnits.isZero()) return minMultiplier
+  if (totalStakeUnits.isZero() || lockStakeUnits.isZero()) return minMultiplier
 
   const currentUnlockedRewards = await getCurrentUnlockedRewards(geyserAddress, signer)
   if (currentUnlockedRewards.isZero()) return minMultiplier
 
-  const currentRewards = await getCurrentVaultReward(vaultAddress, geyserAddress, signer)
-  const maxRewards = currentUnlockedRewards.mul(lockStakeUnits).div(totalStakeUnits)
-
-  const fraction = parseFloat(formatUnits(currentRewards.mul(100).div(maxRewards), 2))
+  const currentRewards = parseInt((await getCurrentVaultReward(vaultAddress, geyserAddress, signer)).toString(), 10)
+  const maxRewards =
+    parseInt(currentUnlockedRewards.mul(lockStakeUnits).toString(), 10) / parseInt(totalStakeUnits.toString(), 10)
+  const fraction = currentRewards / maxRewards
 
   return minMultiplier + fraction * (maxMultiplier - minMultiplier)
 }
