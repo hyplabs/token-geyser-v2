@@ -6,6 +6,7 @@ module.exports = {
     screens: {
       sm: '648px',
       md: '768px',
+      'header-wrap': '800px',
       lg: '1024px',
       xl: '1280px',
       '2xl': '1536px',
@@ -44,6 +45,7 @@ module.exports = {
     extend: {
       width: {
         '80px': '80px',
+        '336px': '336px',
         sm: '648px',
         md: '768px',
         lg: '1024px',
